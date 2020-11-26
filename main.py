@@ -183,7 +183,7 @@ class InstagramBot():
 
 mybot = InstagramBot(username, password)
 mybot.login()
-mybot.put_many_likes('https://www.instagram.com/lenabrand.official/')
+mybot.put_many_likes('https://www.instagram.com/edita_astrauskaite/')
 
 
 
