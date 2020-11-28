@@ -4,6 +4,7 @@ from selenium.common.exceptions import NoSuchElementException
 import os
 import time
 import random
+import requests
 from auth_data import username, password
 
 class InstagramBot():
@@ -180,6 +181,68 @@ class InstagramBot():
             # os.remove(f'{file_name}_set.txt')
 
             self.close_browser()
+
+    # method downloads content from user page
+    def download_userpage_content(self, userpage):
+
+        browser = self.browser
+        self.get_all_posts_urls(userpage)
+        file_name = userpage.split("/")[-2]
+        time.sleep(4)
+        browser.get(userpage)
+        time.sleep(4)
+
+        # create a folder with a username to keep the project clean
+        if os.path.exists(f"{file_name}"):
+            print("ERROR: The folder already exists!")
+        else:
+            os.mkdir(file_name)
+
+        img_and_video_src_urls = []
+        with open(f'{file_name}_set.txt') as file:
+            urls_list = file.readlines()
+
+            for post_url in urls_list:
+                try:
+                    browser.get(post_url)
+                    time.sleep(4)
+
+                    img_src = "/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/img"
+                    video_src = "/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/div/div/video"
+                    post_id = post_url.split("/")[-2]
+
+                    if self.xpath_exists(img_src):
+                        img_src_url = browser.find_element_by_xpath(img_src).get_attribute("src")
+                        img_and_video_src_urls.append(img_src_url)
+
+                        # save the image
+                        get_img = requests.get(img_src_url)
+                        with open(f"{file_name}/{file_name}_{post_id}_img.jpg", "wb") as img_file:
+                            img_file.write(get_img.content)
+
+                    elif self.xpath_exists(video_src):
+                        video_src_url = browser.find_element_by_xpath(video_src).get_attribute("src")
+                        img_and_video_src_urls.append(video_src_url)
+
+                        # save the video
+                        get_video = requests.get(video_src_url, stream=True)
+                        with open(f"{file_name}/{file_name}_{post_id}_video.mp4", "wb") as video_file:
+                            for chunk in get_video.iter_content(chunk_size=1024 * 1024):
+                                if chunk:
+                                    video_file.write(chunk)
+                    else:
+                        img_and_video_src_urls.append(f"{post_url}, link not found!")
+                    print(f"SUCCESS: content from post {post_url} downloaded!")
+
+                except Exception as ex:
+                    print(ex)
+                    self.close_browser()
+
+            self.close_browser()
+
+        with open(f'{file_name}/{file_name}_img_and_video_src_urls.txt', 'a') as file:
+            for i in img_and_video_src_urls:
+                file.write(i + "\n")
 
 mybot = InstagramBot(username, password)
 mybot.login()
