@@ -244,9 +244,132 @@ class InstagramBot():
             for i in img_and_video_src_urls:
                 file.write(i + "\n")
 
+    # subscription method for all subscribers of the transferred account
+    def get_all_followers(self, userpage):
+
+        browser = self.browser
+        browser.get(userpage)
+        time.sleep(4)
+        file_name = userpage.split("/")[-2]
+
+        # create a folder with a username to keep the project clean
+        if os.path.exists(f"{file_name}"):
+            print(f"Folder {file_name} already exists!")
+        else:
+            print(f"Create user folder {file_name}.")
+            os.mkdir(file_name)
+
+        wrong_userpage = "/html/body/div[1]/section/main/div/h2"
+        if self.xpath_exists(wrong_userpage):
+            print(f"User {file_name} does not exist, check URL")
+            self.close_browser()
+        else:
+            print(f"User {file_name} was found successfully, let's start downloading subscriber links!")
+            time.sleep(2)
+
+            followers_button = browser.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/ul/li[2]/a")
+            followers_count = followers_button.text
+            followers_count = int(followers_count.split(' ')[0])
+            print(f"Number of subscribers: {followers_count}")
+            time.sleep(2)
+
+            loops_count = int(followers_count / 12)
+            print(f"Number of iterations: {loops_count}")
+            time.sleep(4)
+
+            followers_button.click()
+            time.sleep(4)
+
+            followers_ul = browser.find_element_by_xpath("/html/body/div[4]/div/div/div[2]")
+
+            try:
+                followers_urls = []
+                for i in range(1, loops_count + 1):
+                    browser.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", followers_ul)
+                    time.sleep(random.randrange(2, 4))
+                    print(f"Iteration #{i}")
+
+                all_urls_div = followers_ul.find_elements_by_tag_name("li")
+
+                for url in all_urls_div:
+                    url = url.find_element_by_tag_name("a").get_attribute("href")
+                    followers_urls.append(url)
+
+                # save all user subscribers to a file
+                with open(f"{file_name}/{file_name}.txt", "a") as text_file:
+                    for link in followers_urls:
+                        text_file.write(link + "\n")
+
+                with open(f"{file_name}/{file_name}.txt") as text_file:
+                    users_urls = text_file.readlines()
+
+                    for user in users_urls[0:10]:
+                        try:
+                            try:
+                                with open(f'{file_name}/{file_name}_subscribe_list.txt',
+                                          'r') as subscribe_list_file:
+                                    lines = subscribe_list_file.readlines()
+                                    if user in lines:
+                                        print(f'We are already subscribed to {user}, move on to the next user!')
+                                        continue
+
+                            except Exception as ex:
+                                print('The file with links has not been created yet!')
+                                # print(ex)
+
+                            browser = self.browser
+                            browser.get(user)
+                            page_owner = user.split("/")[-2]
+
+                            if self.xpath_exists("/html/body/div[1]/section/main/div/header/section/div[1]/div/a"):
+
+                                print("This is our profile, already subscribed, skip iteration!")
+                            elif self.xpath_exists(
+                                    "/html/body/div[1]/section/main/div/header/section/div[1]/div[2]/div/span/span[1]/button/div/span"):
+                                print(f"Already follow {page_owner} skip iteration!")
+                            else:
+                                time.sleep(random.randrange(4, 8))
+
+                                if self.xpath_exists(
+                                        "/html/body/div[1]/section/main/div/div/article/div[1]/div/h2"):
+                                    try:
+                                        follow_button = browser.find_element_by_xpath(
+                                            "/html/body/div[1]/section/main/div/header/section/div[1]/div[1]/button").click()
+                                        print(f'We requested a subscription to user {page_owner}. Closed account!')
+                                    except Exception as ex:
+                                        print(ex)
+                                else:
+                                    try:
+                                        if self.xpath_exists("/html/body/div[1]/section/main/div/header/section/div[1]/div[1]/button"):
+                                            follow_button = browser.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/div[1]/div[1]/button").click()
+                                            print(f'Subscribed to user {page_owner}. Open account!')
+                                        else:
+                                            follow_button = browser.find_element_by_xpath("/html/body/div[1]/section/main/div/header/section/div[1]/div[1]/div/span/span[1]/button").click()
+                                            print(f'Subscribed to user {page_owner}. Open account!')
+                                    except Exception as ex:
+                                        print(ex)
+
+                                # we write data to a file for links of all subscriptions, if there is no file, we create it, if there is, we add
+                                with open(f'{file_name}/{file_name}_subscribe_list.txt',
+                                          'a') as subscribe_list_file:
+                                    subscribe_list_file.write(user)
+
+                                time.sleep(random.randrange(7, 15))
+
+                        except Exception as ex:
+                            print(ex)
+                            self.close_browser()
+
+            except Exception as ex:
+                print(ex)
+                self.close_browser()
+
+        self.close_browser()
+
+
 mybot = InstagramBot(username, password)
 mybot.login()
-mybot.put_many_likes('https://www.instagram.com/edita_astrauskaite/')
+mybot.put_many_likes('https://www.instagram.com/lenabrand.official/')
 
 
 
