@@ -9,10 +9,10 @@
 
 
 # Type your username here
-username = 'instabotemail2@gmail.com'
+username = 'email'
 
 # Type your password here
-password = 'lol159753'
+password = 'password'
 
 
 # Hashtags you want to scrap, please write them separated by commas and put them in quotes
