@@ -4,12 +4,16 @@ import os
 import time
 import random
 import requests
-from auth_data import username, password
+from auth_data import username, password, hashtags, min_posts, min_followers, max_posts, max_followers
 
 class InstagramBot():
 
     # Set models
-    def __init__(self, username, password):
+    def __init__(self, username, password, min_posts, min_followers, max_posts, max_followers):
+        self.min_posts = min_posts
+        self.min_followers = min_followers
+        self.max_posts = max_posts
+        self.max_followers = max_followers
         self.username = username
         self.password = password
         self.browser = webdriver.Chrome('chromedriver.exe')
@@ -18,6 +22,18 @@ class InstagramBot():
     def close_browser(self):
         self.browser.close()
         self.browser.quit()
+
+    # Check if xpath to element exists
+    def xpath_exists(self, path):
+        browser = self.browser
+
+        try:
+            browser.find_element_by_xpath(path)
+            exist = True
+        except:
+            exist = False
+
+        return exist
 
     # Login to instagram account
     def login(self):
@@ -69,146 +85,223 @@ class InstagramBot():
             print('Notification window not found')
             time.sleep(random.randrange(3, 5))
 
-    # # Search posts by hashtag, saves all hashtegs to file, follow then and puts like to posts
-    # def like_photo_by_hashtag(self, hashtag):
-    #     browser = self.browser
-    #     browser.get(f'https://www.instagram.com/explore/tags/{hashtag}/') # try to get page with posts which contains hashtags I need to put likes
-    #     time.sleep(random.randrange(5, 10))
-    #     print('SUCCESS: Hashtags window reached')
-    #
-    #     for i in range(1, 4):
-    #         browser.execute_script("window.scrollTo(0, document.body.scrollHeight);") # scroll page to get more posts, in this case scroll 4 times
-    #         time.sleep(random.randrange(5, 8))
-    #
-    #     hrefs = browser.find_elements_by_tag_name('a')
-    #     posts_urls = [item.get_attribute('href') for item in hrefs if '/p/' in item.get_attribute('href')] # save only posts links to this array
-    #
-    #     for url in posts_urls: # Put like
-    #         try:
-    #             browser.get(url)
-    #             time.sleep(10)
-    #             like_button = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/div[1]/article/div[3]/section[1]/span[1]/button')
-    #             like_button.click()
-    #             print(f'SUCCES: Like putted on {url}')
-    #             time.sleep(random.randrange(80, 100))
-    #         except:
-    #             print(f'ERROR: Failed to put a like on {url}')
-    #             self.close_browser()
-
-    # Check if xpath to element exists
-    def xpath_exists(self, url):
+    def search_accounts(self, pages):
         browser = self.browser
-
-        try:
-            browser.find_element_by_xpath(url)
-            exist = True
-        except:
-            exist = False
-
-    # save all posts urls from page to txt file
-    def get_all_posts_urls(self, userpage):
-        browser = self.browser
-        browser.get(userpage)
         time.sleep(random.randrange(3, 5))
 
-        wrong_userpage = '/html/body/div[1]/section/main/div/h2'
-        if self.xpath_exists(wrong_userpage):
-            print('ERROR: This user does not exist')
-            self.close_browser()
-        else:
-            print('SUCCESS: User found successfully, you can like it')
+        for page in pages:
+            current_hashtag = page
+
+            current_urls = self.save_urls_by_hashtag(current_hashtag)
             time.sleep(random.randrange(3, 5))
 
-            posts_count = int(browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/ul/li[1]/span/span').text)
-            loops_count = int(posts_count/12)
+            current_accounts = self.get_urls_to_accounts(current_urls)
+            time.sleep(random.randrange(3, 5))
 
-            posts_urls = []
-            for i in range(0, loops_count):
-                hrefs = browser.find_elements_by_tag_name('a')
-                hrefs = [item.get_attribute('href') for item in hrefs if '/p/' in item.get_attribute('href')]
+            self.scrap_accounts(current_accounts)
+            time.sleep(random.randrange(3, 5))
 
-                for href in hrefs:
-                    posts_urls.append(href)
-
-                browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll page to get more posts
-                time.sleep(random.randrange(3, 5))
-                print(f'SUCCESS: Times scrolled {i}')
-
-            file_name = userpage.split("/")[-2]
-
-            with open(f'{file_name}.txt', 'a') as file:
-                for post_url in posts_urls:
-                    file.write(post_url + "\n")
-
-            # Removes dublicated links
-            set_posts_urls = set(posts_urls)
-            set_posts_urls = list(set_posts_urls)
-
-            with open(f'{file_name}_set.txt', 'a') as file:
-                for post_url in set_posts_urls:
-                    file.write(post_url + '\n')
-
-    # method downloads content from user page
-    def download_userpage_content(self, userpage):
+    # Search posts by hashtag, saves all hashtags to file, follow then and puts like to posts
+    def save_urls_by_hashtag(self, hashtag):
         browser = self.browser
-        self.get_all_posts_urls(userpage)
-        file_name = userpage.split("/")[-2]
-        time.sleep(4)
-        browser.get(userpage)
-        time.sleep(4)
+        browser.get(f'https://www.instagram.com/explore/tags/{hashtag}/') # try to get page with posts which contains hashtags I need to put likes
+        time.sleep(random.randrange(3, 5))
+        print('SUCCESS: Hashtags window reached')
 
-        # create a folder with a username to keep the project clean
-        if os.path.exists(f"{file_name}"):
-            print("ERROR: The folder already exists!")
-        else:
-            os.mkdir(file_name)
+        # scroll page to get more posts, in this case scroll 4 times
+        for i in range(1, 5):
+            browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(random.randrange(3, 5))
 
-        img_and_video_src_urls = []
-        with open(f'{file_name}_set.txt') as file:
-            urls_list = file.readlines()
+        hrefs = browser.find_elements_by_tag_name('a')
+        posts_urls = [item.get_attribute('href') for item in hrefs if '/p/' in item.get_attribute('href')] # save only posts links to this array
+        set_posts_urls = set(posts_urls)
+        set_posts_urls = list(set_posts_urls)
+        return set_posts_urls
 
-            for post_url in urls_list[0:5]:
-                try:
-                    browser.get(post_url)
-                    time.sleep(4)
+    def get_urls_to_accounts(self, post_urls):
+        browser = self.browser
+        current_urls_to_account = []
 
-                    img_src = "/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div[1]/div[2]/div/div/div/ul/li[2]/div/div/div/div[1]/img"
-                    video_src = "/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/div/div/video"
-                    post_id = post_url.split("/")[-2]
+        for post_url in post_urls:
+            browser.get(post_url) # try to get page with posts which contains hashtags I need to put likes
+            time.sleep(random.randrange(3, 5))
 
-                    if self.xpath_exists(img_src):
-                        img_src_url = browser.find_element_by_xpath(img_src).get_attribute("src")
-                        img_and_video_src_urls.append(img_src_url)
+            try:
+                get_url_to_account = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/div[1]/article/header/div[2]/div[1]/div[1]/span/a')
+                get_url_to_account.get_attribute('href')
 
-                        # save the image
-                        get_img = requests.get(img_src_url)
-                        with open(f"{file_name}/{file_name}_{post_id}_img.jpg", "wb") as img_file:
-                            img_file.write(get_img.content)
+                print(get_url_to_account.text)
 
-                    elif self.xpath_exists(video_src):
-                        video_src_url = browser.find_element_by_xpath(video_src).get_attribute("src")
-                        img_and_video_src_urls.append(video_src_url)
+                with open('accounts_urls.txt', 'r') as file:
+                    accounts = file.readlines()
+                    for i in accounts:
+                        if i == get_url_to_account:
+                            print('CATCH: User was already scraped :)')
+                        else:
+                            print('SUCCESS: Link to user taken')
+                            current_urls_to_account.append('https://www.instagram.com/' + get_url_to_account.text)
+                            set_current_urls_to_account = set(current_urls_to_account)
+                            set_current_urls_to_account = list(set_current_urls_to_account)
+            except:
+                pass
 
-                        # save the video
-                        get_video = requests.get(video_src_url, stream=True)
-                        with open(f"{file_name}/{file_name}_{post_id}_video.mp4", "wb") as video_file:
-                            for chunk in get_video.iter_content(chunk_size=1024 * 1024):
-                                if chunk:
-                                    video_file.write(chunk)
+        with open('accounts_urls.txt', 'a') as file:
+            for url in set_current_urls_to_account:
+                file.write(url + '\n')
+
+        return set_current_urls_to_account
+
+    def scrap_accounts(self, pages):
+        browser = self.browser
+        min_posts = self.min_posts
+        min_followers = self.min_followers
+        max_posts = self.max_posts
+        max_followers = self.max_followers
+
+        for page in pages:
+            browser.get(page)  # try to get page with posts which contains hashtags I need to put likes
+            time.sleep(random.randrange(3, 5))
+
+            wrong_userpage = ''
+            closed_account = ''
+
+            try:
+                wrong_userpage = browser.find_element_by_xpath('/html/body/div[1]/section/main/div')
+            except:
+                pass
+            try:
+                closed_account = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/div/article/div[1]/div')
+            except:
+                pass
+            
+            if self.xpath_exists(wrong_userpage):
+                print('ERROR: Wrong userpage')
+            else:
+                if self.xpath_exists(closed_account):
+                    print("CATCH: Account is closed. Can't be scrapped")
+                else:
+                    try:
+                        posts_count = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/ul/li[1]/span/span').text
+                        try:
+                            followers_count = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/ul/li[2]/a/span')
+                        except:
+                            pass
+                        try:
+                            followers_count = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/ul/li[2]/span/span')
+                        except:
+                            pass
+                        followers = followers_count.text
+
+                        valid_followers_count = 3
+                        valid_posts_count = 3
+
+                        try:
+                            valid_followers_count = int(followers)
+                        except:
+                            pass
+                        if '.' in followers:
+                            followers = followers.replace('.', '')
+                            try:
+                                valid_followers_count = int(followers)
+                            except:
+                                pass
+                        if ',' in followers:
+                            followers = followers.replace(',', '')
+                            try:
+                                valid_followers_count = int(followers)
+                            except:
+                                pass
+                        if 'k' in followers:
+                            followers_string = followers.replace('k', '')
+                            valid_followers_count = int(followers_string)
+                            valid_followers_count = valid_followers_count * 1000
+                        if 'm' in followers:
+                            followers_string = followers.replace('m', '')
+                            valid_followers_count = int(followers_string)
+                            valid_followers_count = valid_followers_count * 1000000
+
+                        try:
+                            valid_posts_count = int(posts_count)
+                        except:
+                            pass
+                        if '.' in posts_count:
+                            posts = posts_count.replace('.', '')
+                            valid_posts_count = int(posts)
+                        if ',' in posts_count:
+                            posts = posts_count.replace(',', '')
+                            valid_posts_count = int(posts)
+
+
+                        print(valid_posts_count)
+                        print(valid_followers_count)
+
+                        name = 'not_found'
+                        if self.xpath_exists('/html/body/div[1]/section/main/div/header/section/div[1]/h1'):
+                            name = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/div[1]/h1').text
+                        if self.xpath_exists('/html/body/div[1]/section/main/div/header/section/div[1]/h2'):
+                            name = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/div[1]/h2').text
+
+                        if valid_posts_count > min_posts and valid_posts_count < max_posts and valid_followers_count > min_followers and valid_followers_count < max_followers:
+                            for scroll in range(0, 4):
+                                browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll page to get more posts
+                                time.sleep(random.randrange(3, 5))
+                                hrefs = browser.find_elements_by_tag_name('a')
+                                posts_urls = [item.get_attribute('href') for item in hrefs if'/p/' in item.get_attribute('href')]  # save only posts links to this array
+
+                            set_posts_urls = set(posts_urls)
+                            set_posts_urls = list(set_posts_urls)
+
+                            self.get_images(set_posts_urls, name)
+                    except:
+                        pass
+
+        for i in set_posts_urls:
+            print(i)
+
+        return set_posts_urls
+
+    def get_images(self, posts, page):
+        browser = self.browser
+        img_src_urls = []
+
+        for post in posts:
+            browser.get(post)  # try to get page with posts which contains hashtags I need to put likes
+            time.sleep(random.randrange(3, 5))
+            image_src = ''
+
+            if self.xpath_exists('/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/img'):
+                image_src = '/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/img'
+            if self.xpath_exists('/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/img'):
+                image_src = '/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/img'
+            if self.xpath_exists('/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div[1]/div[2]/div/div/div/ul/li[2]/div/div/div/div[1]/img'):
+                image_src = '/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div[1]/div[2]/div/div/div/ul/li[2]/div/div/div/div[1]/img'
+            if self.xpath_exists('/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/div[1]/img'):
+                image_src = '/html/body/div[1]/section/main/div/div[1]/article/div[2]/div/div/div[1]/div[1]/img'
+
+            post_id = post.split('/')[-2]
+
+            try:
+                if self.xpath_exists(image_src):
+                    img_src_url = browser.find_element_by_xpath(image_src).get_attribute("src")
+                    img_src_urls.append(img_src_url)
+
+                    get_img = requests.get(img_src_url)
+                    time.sleep(random.randrange(3, 5))
+
+                    if os.path.exists(f'{page}'):
+                        print('Folder exists')
                     else:
-                        img_and_video_src_urls.append(f"ERROR: {post_url}, link not found!")
-                    print(f"SUCCESS: Content from post {post_url} downloaded!")
+                        os.mkdir(page)
 
-                except Exception as ex:
-                    print(ex)
-                    self.close_browser()
+                    with open(f'{page}/{page}_{post_id}_img.jpg', 'wb') as img_file:
+                        img_file.write(get_img.content)
+                else:
+                    print('Not a image')
+            except:
+                pass
 
-            self.close_browser()
-
-        with open(f'{file_name}/{file_name}_img_and_video_src_urls.txt', 'a') as file:
-            for i in img_and_video_src_urls:
-                file.write(i + "\n")
-
-mybot = InstagramBot(username, password)
+mybot = InstagramBot(username, password, min_posts, min_followers, max_posts, max_followers)
 mybot.login()
-mybot.download_userpage_content('https://www.instagram.com/lenabrand.official/')
+mybot.search_accounts(hashtags)
+mybot.close_browser()

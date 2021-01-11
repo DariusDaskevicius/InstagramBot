@@ -9,25 +9,26 @@
 
 
 # Type your username here
-username = '**********@****.***'
-
+username = 'instabotemail2@gmail.com'
 
 # Type your password here
-password = '*****'
+password = 'lol159753'
 
 
 # Hashtags you want to scrap, please write them separated by commas and put them in quotes
 # Example:
 # URLS = [
-#   "#model",
+#   "model",
 #   "#beautiful",
 #   "#fancy"
 # ]
 
 hashtags = [
-    "#model",
-    "#beautiful",
-    "#fancy",
-    # "https://www.facebook.com/groups/361439483983372/",
-    # "https://www.facebook.com/groups/11251325123461278469132764781649813264987"
+    "model",
+    # "wolf"
 ]
+
+min_posts = 50
+max_posts = 300
+min_followers = 10000
+max_followers = 1000000
