@@ -92,13 +92,16 @@ class InstagramBot():
         for page in pages:
             current_hashtag = page
 
+            print('NOTIFICATION: Bot now saving urls of posts that were searched by hashtag')
             current_urls = self.save_urls_by_hashtag(current_hashtag)
             time.sleep(random.randrange(3, 5))
 
+            print('NOTIFICATION: Bot now saving urls to accounts going through posts that were collected')
             current_accounts = self.get_urls_to_accounts(current_urls)
             time.sleep(random.randrange(3, 5))
 
-            self.scrap_accounts(current_accounts)
+            print('NOTIFICATION: Bot now will scrap accounts and download images')
+            self.scrap_accounts(current_accounts, page)
             time.sleep(random.randrange(3, 5))
 
     # Search posts by hashtag, saves all hashtags to file, follow then and puts like to posts
@@ -131,8 +134,6 @@ class InstagramBot():
                 get_url_to_account = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/div[1]/article/header/div[2]/div[1]/div[1]/span/a')
                 get_url_to_account.get_attribute('href')
 
-                print(get_url_to_account.text)
-
                 with open('accounts_urls.txt', 'r') as file:
                     accounts = file.readlines()
                     for i in accounts:
@@ -152,12 +153,13 @@ class InstagramBot():
 
         return set_current_urls_to_account
 
-    def scrap_accounts(self, pages):
+    def scrap_accounts(self, pages, hashtag):
         browser = self.browser
         min_posts = self.min_posts
         min_followers = self.min_followers
         max_posts = self.max_posts
         max_followers = self.max_followers
+        current_hashtag = hashtag
 
         for page in pages:
             browser.get(page)  # try to get page with posts which contains hashtags I need to put likes
@@ -232,10 +234,6 @@ class InstagramBot():
                             posts = posts_count.replace(',', '')
                             valid_posts_count = int(posts)
 
-
-                        print(valid_posts_count)
-                        print(valid_followers_count)
-
                         name = 'not_found'
                         if self.xpath_exists('/html/body/div[1]/section/main/div/header/section/div[1]/h1'):
                             name = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/div[1]/h1').text
@@ -243,6 +241,7 @@ class InstagramBot():
                             name = browser.find_element_by_xpath('/html/body/div[1]/section/main/div/header/section/div[1]/h2').text
 
                         if valid_posts_count > min_posts and valid_posts_count < max_posts and valid_followers_count > min_followers and valid_followers_count < max_followers:
+                            print('SUCCESS: Account passes all the criteria, start scrapping')
                             for scroll in range(0, 4):
                                 browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll page to get more posts
                                 time.sleep(random.randrange(3, 5))
@@ -252,16 +251,13 @@ class InstagramBot():
                             set_posts_urls = set(posts_urls)
                             set_posts_urls = list(set_posts_urls)
 
-                            self.get_images(set_posts_urls, name)
+                            self.get_images(set_posts_urls, name, current_hashtag)
                     except:
                         pass
 
-        for i in set_posts_urls:
-            print(i)
-
         return set_posts_urls
 
-    def get_images(self, posts, page):
+    def get_images(self, posts, page, hashtag):
         browser = self.browser
         img_src_urls = []
 
@@ -289,19 +285,24 @@ class InstagramBot():
                     get_img = requests.get(img_src_url)
                     time.sleep(random.randrange(3, 5))
 
-                    if os.path.exists(f'{page}'):
-                        print('Folder exists')
+                    if os.path.exists(f'Content/{hashtag}_{page}'):
+                        print('SUCCESS: Folder found')
                     else:
-                        os.mkdir(page)
+                        os.mkdir(f'Content/{hashtag}_{page}')
 
-                    with open(f'{page}/{page}_{post_id}_img.jpg', 'wb') as img_file:
+                    with open(f'Content/{hashtag}_{page}/{page}_{post_id}_img.jpg', 'wb') as img_file:
                         img_file.write(get_img.content)
+
+                    print(f"SUCCESS: Image downloaded to Content/{hashtag}_{page}")
                 else:
-                    print('Not a image')
+                    print('CATCH: Post not a image there will be no download')
             except:
                 pass
 
-mybot = InstagramBot(username, password, min_posts, min_followers, max_posts, max_followers)
-mybot.login()
-mybot.search_accounts(hashtags)
-mybot.close_browser()
+for i in range(0, 99999):
+    mybot = InstagramBot(username, password, min_posts, min_followers, max_posts, max_followers)
+    mybot.login()
+    mybot.search_accounts(hashtags)
+    mybot.close_browser()
+    print("NOTIFICATION: Bot is sleeping 30 - 60 minutes")
+    time.sleep(random.randrange(1800, 3600))

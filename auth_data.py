@@ -9,10 +9,10 @@
 
 
 # Type your username here
-username = 'email'
+username = 'instabotemail2@gmail.com'
 
 # Type your password here
-password = 'password'
+password = 'lol159753'
 
 
 # Hashtags you want to scrap, please write them separated by commas and put them in quotes
@@ -25,7 +25,7 @@ password = 'password'
 
 hashtags = [
     "model",
-    # "wolf"
+    "wolf"
 ]
 
 min_posts = 50
